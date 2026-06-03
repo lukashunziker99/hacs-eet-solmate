@@ -1,37 +1,35 @@
 import asyncio
 import json
 import websockets
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 class SolMateWebSocket:
-    def __init__(self, host, port, callback):
-        self.host = host
-        self.port = port
-        self.callback = callback
-        self.running = False
 
-    async def start(self):
-        self.running = True
+    def __init__(self, host, port):
+        self.url = f"ws://{host}:{port}"
+        self.ws = None
 
-        while self.running:
+    async def connect(self):
+        return await websockets.connect(self.url, ping_interval=20)
+
+    async def receive_loop(self, callback, running_flag):
+
+        backoff = 2
+
+        while running_flag():
+
             try:
-                uri = f"ws://{self.host}:{self.port}"
+                async with await self.connect() as ws:
+                    self.ws = ws
+                    backoff = 2
 
-                async with websockets.connect(uri) as ws:
-                    while self.running:
+                    while running_flag():
                         msg = await ws.recv()
-                        data = json.loads(msg)
+                        await callback(json.loads(msg))
 
-                        mapped = {
-                            "pv_power": data.get("pvPower"),
-                            "battery_soc": data.get("batterySoc"),
-                            "grid_power": data.get("gridPower"),
-                            "consumption": data.get("consumption"),
-                        }
-
-                        await self.callback(mapped)
-
-            except Exception:
-                await asyncio.sleep(5)
-
-    def stop(self):
-        self.running = False
+            except Exception as e:
+                _LOGGER.warning("WS reconnect in %s sec", backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 30)
