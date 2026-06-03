@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EET SolMate",
+        "description": "Gib die Zugangsdaten deines SolMate ein. Lass die IP-Adresse leer fuer die Verbindung ueber die EET-Cloud, oder trage die lokale IP des SolMate fuer eine direkte lokale Verbindung ein.",
+        "data": {
+          "serial": "Seriennummer",
+          "password": "Benutzer-Passwort",
+          "host": "Lokale IP-Adresse (optional)",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen. Pruefe IP/Port und ob der SolMate erreichbar ist.",
+      "invalid_auth": "Ungueltige Seriennummer oder falsches Passwort."
+    },
+    "abort": {
+      "already_configured": "Dieser SolMate ist bereits eingerichtet."
+    }
+  }
+}
