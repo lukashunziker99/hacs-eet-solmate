@@ -9,7 +9,6 @@ class SolMateWriter:
         self.ws = ws
         self.mqtt = mqtt_fallback
 
-        # static mapping (can later move to const.py)
         self.map = {
             "battery_reserve": "setBatteryReserve",
             "mode": "setMode",
@@ -18,28 +17,24 @@ class SolMateWriter:
 
     async def write(self, coordinator, key, value):
 
+        command = self.map.get(key)
+
+        if not command:
+            _LOGGER.warning("Unknown write key: %s", key)
+            return
+
+        payload = json.dumps({
+            "cmd": command,
+            "value": value
+        })
+
         try:
-            command = self.map.get(key)
-
-            if not command:
-                _LOGGER.warning("No command mapping for %s", key)
-                return
-
-            payload = json.dumps({
-                "cmd": command,
-                "value": value
-            })
-
-            # PRIMARY: WebSocket
             if self.ws:
                 await self.ws.send(payload)
-                _LOGGER.debug("WS write %s", payload)
                 return
 
-            # FALLBACK: MQTT
             if self.mqtt:
                 await self.mqtt.write(key, value)
-                return
 
         except Exception as e:
             _LOGGER.error("Write failed %s: %s", key, e)
