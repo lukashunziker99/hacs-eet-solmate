@@ -1,19 +1,26 @@
 from homeassistant.components.switch import SwitchEntity
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = entry.runtime_data
+    coordinator = hass.data["solmate"][entry.entry_id]
 
     async_add_entities([
-        SolMateSwitch(coordinator, "force_charge")
+        SolMateSwitch(coordinator)
     ])
 
 class SolMateSwitch(SwitchEntity):
+    def __init__(self, coordinator):
+        self.coordinator = coordinator
+        self._attr_name = "SolMate Force Charge"
+        self._attr_unique_id = "solmate_force_charge"
+
     @property
     def is_on(self):
-        return self.coordinator.data.get(self.key)
+        return self.coordinator.data.get("force_charge")
 
     async def async_turn_on(self):
-        await self.coordinator.ws.send({"force_charge": True})
+        # TODO WRITE COMMAND
+        pass
 
     async def async_turn_off(self):
-        await self.coordinator.ws.send({"force_charge": False})
+        # TODO WRITE COMMAND
+        pass
