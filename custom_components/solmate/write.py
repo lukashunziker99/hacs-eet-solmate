@@ -5,8 +5,8 @@ _LOGGER = logging.getLogger(__name__)
 
 class SolMateWriter:
 
-    def __init__(self, ws, mqtt_fallback=None):
-        self.ws = ws
+    def __init__(self, ws_client, mqtt_fallback=None):
+        self.ws = ws_client
         self.mqtt = mqtt_fallback
 
         self.map = {
@@ -17,24 +17,24 @@ class SolMateWriter:
 
     async def write(self, coordinator, key, value):
 
-        command = self.map.get(key)
+        cmd = self.map.get(key)
 
-        if not command:
-            _LOGGER.warning("Unknown write key: %s", key)
+        if not cmd:
+            _LOGGER.warning("Unknown key %s", key)
             return
 
         payload = json.dumps({
-            "cmd": command,
+            "cmd": cmd,
             "value": value
         })
 
         try:
-            if self.ws:
-                await self.ws.send(payload)
+            if self.ws and self.ws.ws:
+                await self.ws.ws.send(payload)
                 return
 
             if self.mqtt:
                 await self.mqtt.write(key, value)
 
         except Exception as e:
-            _LOGGER.error("Write failed %s: %s", key, e)
+            _LOGGER.error("Write failed %s", e)
