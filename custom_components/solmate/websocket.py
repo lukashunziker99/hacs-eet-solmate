@@ -11,25 +11,27 @@ class SolMateWebSocket:
         self.url = f"ws://{host}:{port}"
         self.ws = None
 
-    async def connect(self):
-        return await websockets.connect(self.url, ping_interval=20)
-
-    async def receive_loop(self, callback, running_flag):
+    async def run(self, handler, running):
 
         backoff = 2
 
-        while running_flag():
+        while running():
 
             try:
-                async with await self.connect() as ws:
+                async with websockets.connect(
+                    self.url,
+                    ping_interval=20,
+                    ping_timeout=20
+                ) as ws:
+
                     self.ws = ws
                     backoff = 2
 
-                    while running_flag():
+                    while running():
                         msg = await ws.recv()
-                        await callback(json.loads(msg))
+                        await handler(json.loads(msg))
 
             except Exception as e:
-                _LOGGER.warning("WS reconnect in %s sec", backoff)
+                _LOGGER.warning("WS reconnect in %s sec (%s)", backoff, e)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30)
