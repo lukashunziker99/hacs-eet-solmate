@@ -4,7 +4,6 @@ async def async_get_config_entry_diagnostics(hass, entry):
 
     return {
         "host": entry.data["host"],
-        "port": entry.data["port"],
-        "data": coordinator.data,
-        "entity_count": len(coordinator.data),
+        "data_keys": list(coordinator.data.keys()),
+        "last_values": coordinator.data,
     }
