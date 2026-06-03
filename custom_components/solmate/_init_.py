@@ -1,3 +1,6 @@
+from .const import DOMAIN
+from .coordinator import SolMateCoordinator
+
 async def async_setup_entry(hass, entry):
 
     coordinator = SolMateCoordinator(
@@ -8,8 +11,8 @@ async def async_setup_entry(hass, entry):
 
     await coordinator.start()
 
-    hass.data.setdefault("solmate", {})
-    hass.data["solmate"][entry.entry_id] = coordinator
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
@@ -21,7 +24,7 @@ async def async_setup_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
 
-    coordinator = hass.data["solmate"][entry.entry_id]
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     await coordinator.stop()
 
     return True
