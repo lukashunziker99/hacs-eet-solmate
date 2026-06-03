@@ -1,21 +1,19 @@
-import voluptuous as vol
 from homeassistant import config_entries
-from .const import DOMAIN, DEFAULT_PORT
-from .coordinator import SolMateCoordinator
+import voluptuous as vol
 
-class SolMateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class SolMateConfigFlow(config_entries.ConfigFlow, domain="solmate"):
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, info=None):
 
-        if user_input is not None:
+        if info is not None:
             return self.async_create_entry(
-                title=f"SolMate {user_input['host']}",
-                data=user_input
+                title="SolMate",
+                data=info
             )
 
         schema = vol.Schema({
             vol.Required("host"): str,
-            vol.Optional("port", default=DEFAULT_PORT): int,
+            vol.Required("port", default=8080): int
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)
