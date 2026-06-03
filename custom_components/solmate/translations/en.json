@@ -1,12 +1,9 @@
 {
-  "title": "EET SolMate",
   "config": {
     "step": {
       "user": {
-        "data": {
-          "host": "Host",
-          "port": "Port"
-        }
+        "title": "SolMate Setup",
+        "description": "Enter SolMate connection details"
       }
     }
   }
