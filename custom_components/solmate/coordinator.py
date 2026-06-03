@@ -1,8 +1,9 @@
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from datetime import timedelta
 import asyncio
+import json
+import websockets
+from datetime import timedelta
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .websocket import SolMateWebSocket
 from .write import SolMateWriter
 from .mqtt_fallback import SolMateMQTTFallback
 
@@ -13,49 +14,65 @@ class SolMateCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             name="solmate",
-            update_interval=timedelta(seconds=10),
+            update_interval=timedelta(seconds=5),
         )
 
-        self.hass = hass
         self.host = host
         self.port = port
 
         self.data = {}
-        self._running = True
-
-        self.ws_client = SolMateWebSocket(host, port)
+        self.running = True
+        self.ws = None
 
         self.writer = None
-        self.mqtt_fallback = SolMateMQTTFallback(mqtt, "solmate")
+        self.mqtt_fallback = mqtt
+
+        self.backoff = 2
 
     async def start(self):
-        self.hass.async_create_task(self._run())
+        self.hass.async_create_task(self._ws_loop())
 
     async def stop(self):
-        self._running = False
+        self.running = False
 
-    def running(self):
-        return self._running
+    async def _ws_loop(self):
 
-    async def _run(self):
+        url = f"ws://{self.host}:{self.port}"
 
-        async def handler(payload):
+        while self.running:
 
-            self.data = {
-                "pv_power": payload.get("pvPower"),
-                "battery_soc": payload.get("batterySoc"),
-                "grid_power": payload.get("gridPower"),
-                "consumption": payload.get("consumption"),
-                "mode": payload.get("mode"),
-                "force_charge": payload.get("forceCharge"),
-            }
+            try:
+                async with websockets.connect(
+                    url,
+                    ping_interval=20,
+                    ping_timeout=20
+                ) as ws:
 
-            if self.writer is None:
-                self.writer = SolMateWriter(
-                    self.ws_client,
-                    self.mqtt_fallback
-                )
+                    self.ws = ws
+                    self.backoff = 2
 
-            self.async_set_updated_data(self.data)
+                    # init write layer
+                    self.writer = SolMateWriter(
+                        ws=ws,
+                        mqtt_fallback=self.mqtt_fallback
+                    )
 
-        await self.ws_client.receive_loop(handler, self.running)
+                    while self.running:
+
+                        msg = await ws.recv()
+                        payload = json.loads(msg)
+
+                        self.data = {
+                            "pv_power": payload.get("pvPower"),
+                            "battery_soc": payload.get("batterySoc"),
+                            "grid_power": payload.get("gridPower"),
+                            "consumption": payload.get("consumption"),
+                            "mode": payload.get("mode"),
+                            "force_charge": payload.get("forceCharge"),
+                        }
+
+                        self.async_set_updated_data(self.data)
+
+            except Exception:
+                await asyncio.sleep(self.backoff)
+                self.backoff = min(self.backoff * 2, 30)
