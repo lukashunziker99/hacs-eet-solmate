@@ -1,20 +1,10 @@
 from homeassistant.helpers.entity import Entity
-from .const import SENSORS
+from .entity import SolMateEntity
 
-async def async_setup_entry(hass, entry, async_add_entities):
-
-    coordinator = hass.data["solmate"][entry.entry_id]
-
-    async_add_entities([
-        SolMateSensor(coordinator, key, name)
-        for key, name in SENSORS.items()
-    ])
-
-
-class SolMateSensor(Entity):
+class SolMateSensor(Entity, SolMateEntity):
 
     def __init__(self, coordinator, key, name):
-        self.coordinator = coordinator
+        SolMateEntity.__init__(self, coordinator)
         self.key = key
         self._attr_name = f"SolMate {name}"
         self._attr_unique_id = f"solmate_{key}"
@@ -22,7 +12,3 @@ class SolMateSensor(Entity):
     @property
     def state(self):
         return self.coordinator.data.get(self.key)
-
-    @property
-    def available(self):
-        return self.coordinator.data is not None
