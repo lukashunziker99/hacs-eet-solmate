@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SolMate Setup",
-        "description": "Enter SolMate connection details"
+        "description": "Enter host and port"
       }
     }
   }
