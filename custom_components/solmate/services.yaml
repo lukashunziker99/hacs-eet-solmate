@@ -1,9 +1,25 @@
-set_value:
-  name: Set SolMate Value
+set_boost:
+  name: Set boost injection
+  description: Temporarily boost the SolMate's injection power for a given duration.
   fields:
-    key:
+    wattage:
+      name: Wattage
+      description: Boost injection power in watts.
       required: true
-      example: battery_reserve
-    value:
-      required: true
-      example: 50
+      example: 500
+      selector:
+        number:
+          min: 0
+          max: 1000
+          unit_of_measurement: W
+    time:
+      name: Duration
+      description: Boost duration in seconds (0 disables the boost).
+      required: false
+      default: 900
+      example: 900
+      selector:
+        number:
+          min: 0
+          max: 7200
+          unit_of_measurement: s
