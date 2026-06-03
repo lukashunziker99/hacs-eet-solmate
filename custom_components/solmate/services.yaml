@@ -1,6 +1,5 @@
 set_value:
   name: Set SolMate Value
-  description: Write value to SolMate
   fields:
     key:
       required: true
