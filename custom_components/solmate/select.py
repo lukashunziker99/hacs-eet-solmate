@@ -1,15 +1,20 @@
 from homeassistant.components.select import SelectEntity
 
-OPTIONS = ["auto", "eco", "force_charge"]
+OPTIONS = ["auto", "eco", "manual"]
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = entry.runtime_data
+    coordinator = hass.data["solmate"][entry.entry_id]
 
     async_add_entities([
-        SolMateSelect(coordinator, "mode")
+        SolMateSelect(coordinator)
     ])
 
 class SolMateSelect(SelectEntity):
+    def __init__(self, coordinator):
+        self.coordinator = coordinator
+        self._attr_name = "SolMate Mode"
+        self._attr_unique_id = "solmate_mode"
+
     @property
     def options(self):
         return OPTIONS
@@ -19,6 +24,5 @@ class SolMateSelect(SelectEntity):
         return self.coordinator.data.get("mode")
 
     async def async_select_option(self, option):
-        await self.coordinator.ws.send({
-            "set_mode": option
-        })
+        # TODO WRITE COMMAND
+        pass
