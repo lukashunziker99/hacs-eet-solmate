@@ -8,7 +8,7 @@ SENSORS = {
 }
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = entry.runtime_data
+    coordinator = hass.data["solmate"][entry.entry_id]
 
     async_add_entities(
         SolMateSensor(coordinator, key, name)
@@ -20,6 +20,7 @@ class SolMateSensor(Entity):
         self.coordinator = coordinator
         self.key = key
         self._attr_name = f"SolMate {name}"
+        self._attr_unique_id = f"solmate_{key}"
 
     @property
     def state(self):
