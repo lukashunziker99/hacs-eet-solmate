@@ -1,0 +1,37 @@
+import asyncio
+import json
+import websockets
+
+class SolMateWebSocket:
+    def __init__(self, host, port, callback):
+        self.host = host
+        self.port = port
+        self.callback = callback
+        self.running = False
+
+    async def start(self):
+        self.running = True
+
+        while self.running:
+            try:
+                uri = f"ws://{self.host}:{self.port}"
+
+                async with websockets.connect(uri) as ws:
+                    while self.running:
+                        msg = await ws.recv()
+                        data = json.loads(msg)
+
+                        mapped = {
+                            "pv_power": data.get("pvPower"),
+                            "battery_soc": data.get("batterySoc"),
+                            "grid_power": data.get("gridPower"),
+                            "consumption": data.get("consumption"),
+                        }
+
+                        await self.callback(mapped)
+
+            except Exception:
+                await asyncio.sleep(5)
+
+    def stop(self):
+        self.running = False

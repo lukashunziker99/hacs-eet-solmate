@@ -1,0 +1,7 @@
+{
+  "name": "EET SolMate",
+  "content_in_root": false,
+  "domains": ["solmate"],
+  "country": ["CH"],
+  "homeassistant": "2024.1.0"
+}
