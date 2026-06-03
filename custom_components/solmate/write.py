@@ -5,23 +5,41 @@ _LOGGER = logging.getLogger(__name__)
 
 class SolMateWriter:
 
-    def __init__(self, mqtt_client, routes=None, real_names=None):
-        self.mqtt = mqtt_client
-        self.routes = routes or {}
-        self.real_names = real_names or {}
+    def __init__(self, ws, mqtt_fallback=None):
+        self.ws = ws
+        self.mqtt = mqtt_fallback
 
-    async def write(self, key, value):
+        # static mapping (can later move to const.py)
+        self.map = {
+            "battery_reserve": "setBatteryReserve",
+            "mode": "setMode",
+            "force_charge": "setForceCharge",
+        }
 
-        route = self.routes.get(key)
-        real_name = self.real_names.get(key)
+    async def write(self, coordinator, key, value):
 
-        if not route or not real_name:
-            _LOGGER.warning("No mapping for %s", key)
-            return
+        try:
+            command = self.map.get(key)
 
-        payload = json.dumps({real_name: value})
+            if not command:
+                _LOGGER.warning("No command mapping for %s", key)
+                return
 
-        _LOGGER.debug("WRITE %s → %s", key, payload)
+            payload = json.dumps({
+                "cmd": command,
+                "value": value
+            })
 
-        if self.mqtt:
-            self.mqtt.publish(route, payload, qos=2)
+            # PRIMARY: WebSocket
+            if self.ws:
+                await self.ws.send(payload)
+                _LOGGER.debug("WS write %s", payload)
+                return
+
+            # FALLBACK: MQTT
+            if self.mqtt:
+                await self.mqtt.write(key, value)
+                return
+
+        except Exception as e:
+            _LOGGER.error("Write failed %s: %s", key, e)
