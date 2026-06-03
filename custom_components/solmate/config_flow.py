@@ -3,12 +3,12 @@ import voluptuous as vol
 
 class SolMateConfigFlow(config_entries.ConfigFlow, domain="solmate"):
 
-    async def async_step_user(self, info=None):
+    async def async_step_user(self, user_input=None):
 
-        if info is not None:
+        if user_input is not None:
             return self.async_create_entry(
                 title="SolMate",
-                data=info
+                data=user_input
             )
 
         schema = vol.Schema({
