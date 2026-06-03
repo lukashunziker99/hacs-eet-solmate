@@ -1,3 +1,4 @@
+print("SOLMATE IMPORT OK")
 from .const import DOMAIN
 from .coordinator import SolMateCoordinator
 
