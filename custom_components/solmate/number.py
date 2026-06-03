@@ -1,30 +1,24 @@
 from homeassistant.components.number import NumberEntity
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = entry.runtime_data
+    coordinator = hass.data["solmate"][entry.entry_id]
 
     async_add_entities([
-        SolMateNumber(coordinator, "battery_reserve", 0, 100)
+        SolMateNumber(coordinator)
     ])
 
 class SolMateNumber(NumberEntity):
-    def __init__(self, coordinator, key, min_v, max_v):
+    def __init__(self, coordinator):
         self.coordinator = coordinator
-        self.key = key
-        self._attr_min_value = min_v
-        self._attr_max_value = max_v
-
-    @property
-    def name(self):
-        return f"SolMate {self.key}"
+        self._attr_name = "SolMate Battery Reserve"
+        self._attr_unique_id = "solmate_battery_reserve"
+        self._attr_min_value = 0
+        self._attr_max_value = 100
 
     @property
     def value(self):
-        return self.coordinator.data.get(self.key)
+        return self.coordinator.data.get("battery_reserve")
 
     async def async_set_value(self, value: float):
-        # TODO: WebSocket WRITE COMMAND
-        await self.coordinator.ws.send({
-            "set": self.key,
-            "value": value
-        })
+        # TODO: WRITE COMMAND (aus mmattel API einsetzen)
+        await self.coordinator._ws_loop()
