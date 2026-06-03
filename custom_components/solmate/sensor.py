@@ -1,21 +1,18 @@
 from homeassistant.helpers.entity import Entity
-
-SENSORS = {
-    "pv_power": "PV Power",
-    "battery_soc": "Battery SOC",
-    "grid_power": "Grid Power",
-    "consumption": "Consumption",
-}
+from .const import SENSORS
 
 async def async_setup_entry(hass, entry, async_add_entities):
+
     coordinator = hass.data["solmate"][entry.entry_id]
 
-    async_add_entities(
+    async_add_entities([
         SolMateSensor(coordinator, key, name)
         for key, name in SENSORS.items()
-    )
+    ])
+
 
 class SolMateSensor(Entity):
+
     def __init__(self, coordinator, key, name):
         self.coordinator = coordinator
         self.key = key
