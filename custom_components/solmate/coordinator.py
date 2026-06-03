@@ -1,62 +1,61 @@
-import asyncio
-import json
-import websockets
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from datetime import timedelta
+import asyncio
+
+from .websocket import SolMateWebSocket
 from .write import SolMateWriter
+from .mqtt_fallback import SolMateMQTTFallback
 
 class SolMateCoordinator(DataUpdateCoordinator):
 
-    def __init__(self, hass, host, port):
+    def __init__(self, hass, host, port, mqtt=None):
+
         super().__init__(
             hass,
             name="solmate",
             update_interval=timedelta(seconds=10),
         )
 
+        self.hass = hass
         self.host = host
         self.port = port
+
         self.data = {}
+        self._running = True
 
-        self.ws_task = None
-        self.running = True
+        self.ws_client = SolMateWebSocket(host, port)
 
-        # placeholder until WS connects
         self.writer = None
+        self.mqtt_fallback = SolMateMQTTFallback(mqtt, "solmate")
 
     async def start(self):
-        self.ws_task = self.hass.async_create_task(self._ws_loop())
+        self.hass.async_create_task(self._run())
 
     async def stop(self):
-        self.running = False
+        self._running = False
 
-    async def _ws_loop(self):
-        url = f"ws://{self.host}:{self.port}"
+    def running(self):
+        return self._running
 
-        while self.running:
-            try:
-                async with websockets.connect(url) as ws:
+    async def _run(self):
 
-                    while True:
-                        msg = await ws.recv()
-                        data = json.loads(msg)
+        async def handler(payload):
 
-                        self.data = {
-                            "pv_power": data.get("pvPower"),
-                            "battery_soc": data.get("batterySoc"),
-                            "grid_power": data.get("gridPower"),
-                            "consumption": data.get("consumption"),
-                        }
+            self.data = {
+                "pv_power": payload.get("pvPower"),
+                "battery_soc": payload.get("batterySoc"),
+                "grid_power": payload.get("gridPower"),
+                "consumption": payload.get("consumption"),
+                "mode": payload.get("mode"),
+                "force_charge": payload.get("forceCharge"),
+            }
 
-                        # lazy init writer (once WS is alive)
-                        if self.writer is None:
-                            self.writer = SolMateWriter(
-                                mqtt_client=None,   # optional fallback mode
-                                routes=data.get("routes", {}),
-                                real_names=data.get("realNames", {})
-                            )
+            if self.writer is None:
+                self.writer = SolMateWriter(
+                    self.ws_client,
+                    self.mqtt_fallback
+                )
 
-                        self.async_set_updated_data(self.data)
+            self.async_set_updated_data(self.data)
 
-            except Exception:
-                await asyncio.sleep(5)
+        await self.ws_client.receive_loop(handler, self.running)
