@@ -36,11 +36,37 @@ def _battery_scale(value):
         return value
 
 
+# SolMate sign convention (verified against the mmattel/EET-Solmate project):
+#   battery_flow < 0  -> charging
+#   battery_flow > 0  -> discharging
+# If your firmware turns out to be inverted, just swap the two functions below.
+def _battery_charge(flow):
+    """Charging power as a positive value (0 while discharging)."""
+    if flow is None:
+        return None
+    try:
+        return max(0.0, -float(flow))
+    except (TypeError, ValueError):
+        return None
+
+
+def _battery_discharge(flow):
+    """Discharging power as a positive value (0 while charging)."""
+    if flow is None:
+        return None
+    try:
+        return max(0.0, float(flow))
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class SolMateSensorDescription(SensorEntityDescription):
-    """Sensor description with an optional value transform."""
+    """Sensor description with an optional value transform / computation."""
 
     value_fn: Callable = field(default=lambda v: v)
+    # When set, the value is computed from the full live dict instead of a single key.
+    compute: Callable | None = None
 
 
 KNOWN_SENSORS: dict[str, SolMateSensorDescription] = {
@@ -79,6 +105,28 @@ KNOWN_SENSORS: dict[str, SolMateSensorDescription] = {
     ),
 }
 
+# Sensors derived from battery_flow (only added if battery_flow is reported).
+COMPUTED_SENSORS: tuple[SolMateSensorDescription, ...] = (
+    SolMateSensorDescription(
+        key="battery_charge",
+        name="Battery charge",
+        icon="mdi:battery-plus-variant",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        compute=lambda live: _battery_charge(live.get("battery_flow")),
+    ),
+    SolMateSensorDescription(
+        key="battery_discharge",
+        name="Battery discharge",
+        icon="mdi:battery-minus-variant",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        compute=lambda live: _battery_discharge(live.get("battery_flow")),
+    ),
+)
+
 # Keys we never want as their own sensor entity.
 SKIP_KEYS = {"timestamp"}
 
@@ -106,6 +154,11 @@ async def async_setup_entry(
         )
         entities.append(SolMateSensor(coordinator, description))
 
+    # Add derived charge / discharge sensors if the device reports battery_flow.
+    if "battery_flow" in live:
+        for description in COMPUTED_SENSORS:
+            entities.append(SolMateSensor(coordinator, description))
+
     async_add_entities(entities)
 
 
@@ -124,4 +177,6 @@ class SolMateSensor(SolMateBaseEntity, SensorEntity):
     @property
     def native_value(self):
         live = (self.coordinator.data or {}).get("live", {})
+        if self.entity_description.compute is not None:
+            return self.entity_description.compute(live)
         return self.entity_description.value_fn(live.get(self.entity_description.key))
